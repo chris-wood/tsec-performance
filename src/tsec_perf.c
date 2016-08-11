@@ -2,6 +2,7 @@
 #include <parc/algol/parc_BufferComposer.h>
 #include <parc/algol/parc_LinkedList.h>
 #include <parc/algol/parc_Iterator.h>
+#include <parc/algol/parc_HashMap.h>
 
 #include <parc/developer/parc_StopWatch.h>
 #include <parc/security/parc_SecureRandom.h>
@@ -116,10 +117,10 @@ _obfuscateName(PARCBuffer *encodedName)
     return finalName;
 }
 
-static CCNxName *
-_reverseName(CCNxName *name)
+static PARCBuffer *
+_reverseName(PARCHashMap *table, PARCBuffer *buffer)
 {
-    return NULL;
+    return (PARCBuffer *) parcHashMap_Get(table, buffer);
 }
 
 static CiphertextTag *
@@ -308,36 +309,57 @@ main(int argc, char **argv)
         CCNxName *name = ccnxName_CreateFromCString(string);
         char *nameString = ccnxName_ToString(name);
         printf("Read %d: %s\n", index, nameString);
+        PARCBuffer *nameBuffer = parcBuffer_AllocateCString(nameString);
         parcMemory_Deallocate(&nameString);
-        parcLinkedList_Append(nameList, name);
-
-        // XXX: perform the four steps here: obfuscation, de-obfuscation, encryption, decryption
+        parcLinkedList_Append(nameList, nameBuffer);
 
         ccnxName_Release(&name);
         index++;
     } while (true);
 
-    /*
+    PARCHashMap *table = parcHashMap_Create();
+
+    PARCIterator *iterator = parcLinkedList_CreateIterator(nameList);
     while (parcIterator_HasNext(iterator)) {
 
-        CCNxName *name = parcIterator_Next(iterator);
+        PARCBuffer *nameBuffer = parcIterator_Next(iterator);
 
         PARCStopwatch *timer = parcStopwatch_Create();
         parcStopwatch_Start(timer);
 
-        // Lookup and time it.
-        uint64_t startTime = parcStopwatch_ElapsedTimeNanos(timer);
-        // XXX: do something here...
-        uint64_t endTime = parcStopwatch_ElapsedTimeNanos(timer);
+        // 1. Obfuscation
+        uint64_t startObfuscationTime = parcStopwatch_ElapsedTimeNanos(timer);
+        PARCBuffer *obfuscatedName = _obfuscateName(nameBuffer);
+        uint64_t endObfuscationTime = parcStopwatch_ElapsedTimeNanos(timer);
 
-        // assertTrue(parcBitVector_Equals(output, expected), "Expected the correct return vector");
+        // Save the mapping in the table (this is an offline step)
+        parcHashMap_Put(table, obfuscatedName, nameBuffer);
 
-        uint64_t elapsedTime = endTime - startTime;
-        printf("Time %d: %zu ns\n", index, elapsedTime);
+        // 2. De-obfuscation
+        uint64_t startDeobfuscationTime = parcStopwatch_ElapsedTimeNanos(timer);
+        PARCBuffer *originalNameBuffer = _reverseName(table, obfuscatedName);
+        uint64_t endDeobfuscationTime = parcStopwatch_ElapsedTimeNanos(timer);
+
+        assertNotNull(originalNameBuffer, "Expected the original name to be retrieved");
+
+        // 3. Encryption
+        PARCBuffer *dataBuffer = _createRandomBuffer(1024);
+        uint64_t startEncryptionTime = parcStopwatch_ElapsedTimeNanos(timer);
+        CiphertextTag *ciphertext = _encryptContent(nameBuffer, dataBuffer);
+        uint64_t endEncryptionTime = parcStopwatch_ElapsedTimeNanos(timer);
+
+        // 4. Decryption
+        uint64_t startDecryptionTime = parcStopwatch_ElapsedTimeNanos(timer);
+        PARCBuffer *reverseName = _reverseName(table, obfuscatedName);
+        PARCBuffer *plaintext = _decryptContent(nameBuffer, ciphertext);
+        uint64_t endDecryptionTime = parcStopwatch_ElapsedTimeNanos(timer);
+
+        //uint64_t elapsedTime = endTime - startTime;
+        //printf("Time %d: %zu ns\n", index, elapsedTime);
 
         parcStopwatch_Release(&timer);
     }
-    */
 
     return 0;
 }
+
