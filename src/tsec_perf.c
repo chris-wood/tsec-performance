@@ -199,12 +199,32 @@ _openCiphertext(PARCBuffer *ciphertextBuffer, PARCBuffer *tagBuffer, PARCBuffer 
 }
 
 static PARCBuffer *
-_deriveKeyFromName(CCNxName *name)
+_deriveKeyFromName(PARCBuffer *nameBuffer)
 {
     PARCBuffer *keyBuffer = parcBuffer_Allocate(32);
 
-    // XXX 
+    PARCCryptoHasher *hasher = parcCryptoHasher_Create(PARCCryptoHashType_SHA256);
+    parcCryptoHasher_Init(hasher);
+    parcCryptoHasher_UpdateBuffer(hasher, nameBuffer);
+    PARCCryptoHash *hashDigest = parcCryptoHasher_Finalize(hasher);
+    PARCBuffer *nameDigest = parcCryptoHash_GetDigest(hashDigest);
+    parcCryptoHash_Release(&hashDigest);
 
+    uint8_t *nameArray = parcByteArray_Array(parcBuffer_Array(nameDigest));
+    size_t nameArrayLength = parcBuffer_Remaining(nameDigest);
+    
+    uint8_t *keyArray = parcByteArray_Array(parcBuffer_Array(keyBuffer));
+    size_t keyLength = parcBuffer_Remaining(keyBuffer);
+    
+    uint8_t keyid[crypto_generichash_blake2b_SALTBYTES] = {0};
+    uint8_t appid[crypto_generichash_blake2b_PERSONALBYTES] = {0};
+    
+    crypto_generichash_blake2b_salt_personal(keyArray, keyLength,
+                                            NULL, 0,
+                                            nameArray, nameArrayLength,
+                                            keyid, appid);
+    parcBuffer_Release(&nameDigest);
+    
     return keyBuffer;
 }
 
@@ -218,7 +238,7 @@ _createRandomBuffer(int size)
 }
 
 static CiphertextTag *
-_encryptContent(CCNxName *name, PARCBuffer *data)
+_encryptContent(PARCBuffer *name, PARCBuffer *data)
 {
     // 1. Derive the key from the name
     PARCBuffer *keyBuffer = _deriveKeyFromName(name);
@@ -236,7 +256,7 @@ _encryptContent(CCNxName *name, PARCBuffer *data)
 }
 
 static PARCBuffer *
-_decryptContent(CCNxName *name, CiphertextTag *tag)
+_decryptContent(PARCBuffer *name, CiphertextTag *tag)
 {
     PARCBuffer *keyBuffer = _deriveKeyFromName(name);
     PARCBuffer *plaintext = _openCiphertext(tag->ciphertext, tag->tag, tag->IV, keyBuffer);
