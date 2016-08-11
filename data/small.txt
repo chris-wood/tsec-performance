@@ -1,0 +1,2 @@
+ccnx:/a/b/c/d
+ccnx:/a/b
