@@ -209,7 +209,6 @@ _deriveKeyFromName(PARCBuffer *nameBuffer)
     parcCryptoHasher_UpdateBuffer(hasher, nameBuffer);
     PARCCryptoHash *hashDigest = parcCryptoHasher_Finalize(hasher);
     PARCBuffer *nameDigest = parcCryptoHash_GetDigest(hashDigest);
-    parcCryptoHash_Release(&hashDigest);
 
     uint8_t *nameArray = parcByteArray_Array(parcBuffer_Array(nameDigest));
     size_t nameArrayLength = parcBuffer_Remaining(nameDigest);
@@ -224,7 +223,7 @@ _deriveKeyFromName(PARCBuffer *nameBuffer)
                                             NULL, 0,
                                             nameArray, nameArrayLength,
                                             keyid, appid);
-    parcBuffer_Release(&nameDigest);
+    parcCryptoHash_Release(&hashDigest);
     
     return keyBuffer;
 }
@@ -272,6 +271,22 @@ usage()
     fprintf(stderr, "   - n        = The maximum length prefix to use when inserting names into the FIB\n");
 }
 
+typedef struct {
+    uint64_t obfuscateTime;
+    uint64_t deobfuscateTime;
+    uint64_t encryptTime;
+    uint64_t decryptTime;
+} TSecStatsEntry;
+
+void
+displayStatsEntry(TSecStatsEntry *entry)
+{
+    printf("Obfuscate: %llu\n", entry->obfuscateTime);
+    printf("Deobfuscate: %llu\n", entry->deobfuscateTime);
+    printf("Encrypt: %llu\n", entry->encryptTime);
+    printf("Decrypt: %llu\n", entry->decryptTime);
+}
+
 int
 main(int argc, char **argv)
 {
@@ -309,9 +324,15 @@ main(int argc, char **argv)
         CCNxName *name = ccnxName_CreateFromCString(string);
         char *nameString = ccnxName_ToString(name);
         printf("Read %d: %s\n", index, nameString);
-        PARCBuffer *nameBuffer = parcBuffer_AllocateCString(nameString);
+
+        CCNxCodecTlvEncoder *encoder = ccnxCodecTlvEncoder_Create();
+        ccnxCodecSchemaV1NameCodec_Encode(encoder, CCNxCodecSchemaV1Types_CCNxMessage_Name, name);
+        ccnxCodecTlvEncoder_Finalize(encoder);
+        PARCBuffer *encodedBuffer = ccnxCodecTlvEncoder_CreateBuffer(encoder);
+        ccnxCodecTlvEncoder_Destroy(&encoder);
+    
         parcMemory_Deallocate(&nameString);
-        parcLinkedList_Append(nameList, nameBuffer);
+        parcLinkedList_Append(nameList, encodedBuffer);
 
         ccnxName_Release(&name);
         index++;
@@ -354,8 +375,15 @@ main(int argc, char **argv)
         PARCBuffer *plaintext = _decryptContent(nameBuffer, ciphertext);
         uint64_t endDecryptionTime = parcStopwatch_ElapsedTimeNanos(timer);
 
-        //uint64_t elapsedTime = endTime - startTime;
-        //printf("Time %d: %zu ns\n", index, elapsedTime);
+        TSecStatsEntry *entry = (TSecStatsEntry *) malloc(sizeof(TSecStatsEntry));
+        entry->obfuscateTime = endObfuscationTime - startObfuscationTime;
+        entry->deobfuscateTime = endDeobfuscationTime - startDeobfuscationTime;
+        entry->encryptTime = endEncryptionTime - startEncryptionTime;
+        entry->decryptTime = endDecryptionTime - startDecryptionTime;
+
+        // Display the stats entry
+        displayStatsEntry(entry);
+        // XX: do whatever else
 
         parcStopwatch_Release(&timer);
     }
