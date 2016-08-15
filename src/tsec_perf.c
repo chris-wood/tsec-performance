@@ -5,6 +5,7 @@
 #include <parc/algol/parc_HashMap.h>
 
 #include <parc/developer/parc_StopWatch.h>
+#include <parc/statistics/parc_BasicStats.h>
 #include <parc/security/parc_SecureRandom.h>
 
 #include <ccnx/common/ccnx_Name.h>
@@ -268,23 +269,73 @@ usage()
 {
     fprintf(stderr, "usage: tsec_perf <uri_file> <n>\n");
     fprintf(stderr, "   - uri_file = A file that contains a list of CCNx URIs\n");
-    fprintf(stderr, "   - n        = The maximum length prefix to use when inserting names into the FIB\n");
+    fprintf(stderr, "   - n        = The maximum length prefix\n");
 }
 
 typedef struct {
+    int numComponents;
     uint64_t obfuscateTime;
     uint64_t deobfuscateTime;
     uint64_t encryptTime;
     uint64_t decryptTime;
 } TSecStatsEntry;
 
-void
+static bool
+_tsecStatsEntry_Destructor(TSecStatsEntry **statsPtr)
+{
+    TSecStatsEntry *stats = *statsPtr;
+    return true;
+}
+
+parcObject_Override(TSecStatsEntry, PARCObject,
+                    .destructor = (PARCObjectDestructor *) _tsecStatsEntry_Destructor);
+
+parcObject_ImplementAcquire(tsecStatsEntry, TSecStatsEntry);
+parcObject_ImplementRelease(tsecStatsEntry, TSecStatsEntry);
+
+TSecStatsEntry *
+tsecStatsEntry_Create(int n)
+{
+    TSecStatsEntry *entry = parcObject_CreateInstance(TSecStatsEntry);
+    entry->numComponents = n;
+    return entry;
+}
+
+static void
 displayStatsEntry(TSecStatsEntry *entry)
 {
     printf("Obfuscate: %llu\n", entry->obfuscateTime);
     printf("Deobfuscate: %llu\n", entry->deobfuscateTime);
     printf("Encrypt: %llu\n", entry->encryptTime);
     printf("Decrypt: %llu\n", entry->decryptTime);
+}
+
+static void
+displayTotalStats(PARCLinkedList *statList)
+{
+    PARCBasicStats *obfuscateStats = parcBasicStats_Create();
+    PARCBasicStats *deobfuscateStats = parcBasicStats_Create();
+    PARCBasicStats *encryptStats = parcBasicStats_Create();
+    PARCBasicStats *decryptStats = parcBasicStats_Create();
+
+    int N = 0;
+
+    PARCIterator *itr = parcLinkedList_CreateIterator(statList);
+    while (parcIterator_HasNext(itr)) {
+        TSecStatsEntry *entry = (TSecStatsEntry *) parcIterator_Next(itr);
+        N = entry->numComponents;
+        
+        parcBasicStats_Update(obfuscateStats, entry->obfuscateTime);
+        parcBasicStats_Update(deobfuscateStats, entry->deobfuscateTime);
+        parcBasicStats_Update(encryptStats, entry->encryptTime);
+        parcBasicStats_Update(decryptStats, entry->decryptTime);
+    }
+    
+    printf("%d,", N);
+    printf("%f,%f,", parcBasicStats_Mean(obfuscateStats), parcBasicStats_StandardDeviation(obfuscateStats));
+    printf("%f,%f,", parcBasicStats_Mean(deobfuscateStats), parcBasicStats_StandardDeviation(deobfuscateStats));
+    printf("%f,%f,", parcBasicStats_Mean(encryptStats), parcBasicStats_StandardDeviation(encryptStats));
+    printf("%f,%f\n", parcBasicStats_Mean(decryptStats), parcBasicStats_StandardDeviation(decryptStats));
 }
 
 int
@@ -322,8 +373,16 @@ main(int argc, char **argv)
 
         // Create the original name and store it for later
         CCNxName *name = ccnxName_CreateFromCString(string);
+
+        // Trim the name if necessary
+        if (ccnxName_GetSegmentCount(name) > N) {
+            size_t delta = ccnxName_GetSegmentCount(name) - N;
+            name = ccnxName_Trim(name, delta);
+        }
+
+        // Debug display
         char *nameString = ccnxName_ToString(name);
-        printf("Read %d: %s\n", index, nameString);
+        fprintf(stderr, "Read %d: %s\n", index, nameString);
 
         CCNxCodecTlvEncoder *encoder = ccnxCodecTlvEncoder_Create();
         ccnxCodecSchemaV1NameCodec_Encode(encoder, CCNxCodecSchemaV1Types_CCNxMessage_Name, name);
@@ -338,6 +397,7 @@ main(int argc, char **argv)
         index++;
     } while (true);
 
+    PARCLinkedList *stats = parcLinkedList_Create();
     PARCHashMap *table = parcHashMap_Create();
 
     PARCIterator *iterator = parcLinkedList_CreateIterator(nameList);
@@ -375,18 +435,23 @@ main(int argc, char **argv)
         PARCBuffer *plaintext = _decryptContent(nameBuffer, ciphertext);
         uint64_t endDecryptionTime = parcStopwatch_ElapsedTimeNanos(timer);
 
-        TSecStatsEntry *entry = (TSecStatsEntry *) malloc(sizeof(TSecStatsEntry));
+        TSecStatsEntry *entry = tsecStatsEntry_Create(N);
         entry->obfuscateTime = endObfuscationTime - startObfuscationTime;
         entry->deobfuscateTime = endDeobfuscationTime - startDeobfuscationTime;
         entry->encryptTime = endEncryptionTime - startEncryptionTime;
         entry->decryptTime = endDecryptionTime - startDecryptionTime;
 
-        // Display the stats entry
-        displayStatsEntry(entry);
-        // XX: do whatever else
+        // Append the stats entry
+        parcLinkedList_Append(stats, entry);
+        //displayStatsEntry(entry);
 
         parcStopwatch_Release(&timer);
     }
+
+    displayTotalStats(stats);
+
+    parcHashMap_Release(&table);
+    parcLinkedList_Release(&stats);
 
     return 0;
 }
