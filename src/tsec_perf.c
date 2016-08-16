@@ -25,12 +25,20 @@ typedef struct {
     PARCBuffer *IV;
 } CiphertextTag;
 
+int
+peekFile(FILE *fp)
+{
+    int c = fgetc(fp);
+    ungetc(c, fp);
+    return c;
+}
+
 PARCBufferComposer *
 readLine(FILE *fp)
 {
     PARCBufferComposer *composer = parcBufferComposer_Create();
     char curr = fgetc(fp);
-    while ((isalnum(curr) || curr == ':' || curr == '/' || curr == '.' ||
+    while ((isalnum(curr) || curr == ':' || curr == '/' || curr == '.' || 
             curr == '_' || curr == '(' || curr == ')' || curr == '[' ||
             curr == ']' || curr == '-' || curr == '%' || curr == '+' ||
             curr == '=' || curr == ';' || curr == '$' || curr == '\'') && curr != EOF) {
@@ -364,15 +372,19 @@ main(int argc, char **argv)
     do {
         PARCBufferComposer *composer = readLine(file);
         PARCBuffer *bufferString = parcBufferComposer_ProduceBuffer(composer);
-        if (parcBuffer_Remaining(bufferString) == 0) {
+        if (peekFile(file) == EOF) {
+            printf("break...\n");
             break;
         }
-
-        char *string = parcBuffer_ToString(bufferString);
         parcBufferComposer_Release(&composer);
 
         // Create the original name and store it for later
-        CCNxName *name = ccnxName_CreateFromCString(string);
+        printf("Parsing: %s\n", parcBuffer_ToString(bufferString));
+        CCNxName *name = ccnxName_CreateFromBuffer(bufferString);
+        parcBuffer_Release(&bufferString);
+        if (name == NULL) {
+            continue;
+        }
 
         // Trim the name if necessary
         if (ccnxName_GetSegmentCount(name) > N) {
