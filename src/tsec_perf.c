@@ -33,6 +33,8 @@ peekFile(FILE *fp)
     return c;
 }
 
+static PARCSecureRandom *rng; 
+
 PARCBufferComposer *
 readLine(FILE *fp)
 {
@@ -69,25 +71,6 @@ _hashBuffer(PARCBuffer *buffer)
 static PARCBuffer *
 _obfuscateName(PARCBuffer *encodedName)
 {
-    /*
-    CCNxName *newName = ccnxName_CreateFromCString("ccnx:/");
-    PARCBufferComposer *composer = parcBufferComposer_Create();
-    for (size_t i = 0; i < ccnxName_GetSegmentCount(name); i++) {
-        CCNxNameSegment *segment = ccnxName_GetSegmentAtIndex(name, i);
-        char *segmentString = ccnxNameSegment_ToString(segment);
-        PARCBuffer *segmentBuffer = parcBuffer_WrapCString(segmentString);
-        parcBufferComposer_PutBuffer(composer, segmentBuffer);
-        parcBuffer_Release(&segmentBuffer);
-        parcMemory_Deallocate((void **) &segmentString);    
-
-        PARCBuffer *prefix = parcBuffer_Flip(parcBufferComposer_CreateBuffer(composer));
-
-        // XXX: hash the prefix
-        // XXX: create a name segment
-        // XXX: append segment to the name
-    }
-    */
-
     CCNxCodecTlvDecoder *decoder = ccnxCodecTlvDecoder_Create(encodedName);
     size_t type = ccnxCodecTlvDecoder_GetType(decoder);
     size_t length = ccnxCodecTlvDecoder_GetLength(decoder);
@@ -118,9 +101,15 @@ _obfuscateName(PARCBuffer *encodedName)
 
         // Free up memory
         parcBuffer_Release(&digest);
+        parcBuffer_Release(&prefixBuffer);
+        parcBuffer_Release(&segmentValue);
     }
 
     PARCBuffer *finalName = parcBufferComposer_ProduceBuffer(fullComposer);
+    parcBufferComposer_Release(&fullComposer);
+    parcBufferComposer_Release(&composer);
+    ccnxCodecTlvDecoder_Destroy(&decoder);
+
     // XXX: need to go back and reset the name
 
     return finalName;
@@ -241,7 +230,6 @@ static PARCBuffer *
 _createRandomBuffer(int size)
 {
     PARCBuffer *buffer = parcBuffer_Allocate(size);
-    PARCSecureRandom *rng = parcSecureRandom_Create();
     parcSecureRandom_NextBytes(rng, buffer);
     return buffer;
 }
@@ -344,6 +332,11 @@ displayTotalStats(PARCLinkedList *statList)
     printf("%f,%f,", parcBasicStats_Mean(deobfuscateStats), parcBasicStats_StandardDeviation(deobfuscateStats));
     printf("%f,%f,", parcBasicStats_Mean(encryptStats), parcBasicStats_StandardDeviation(encryptStats));
     printf("%f,%f\n", parcBasicStats_Mean(decryptStats), parcBasicStats_StandardDeviation(decryptStats));
+
+    parcBasicStats_Release(&obfuscateStats);
+    parcBasicStats_Release(&deobfuscateStats);
+    parcBasicStats_Release(&encryptStats);
+    parcBasicStats_Release(&decryptStats);
 }
 
 int
@@ -373,13 +366,17 @@ main(int argc, char **argv)
         PARCBufferComposer *composer = readLine(file);
         PARCBuffer *bufferString = parcBufferComposer_ProduceBuffer(composer);
         if (peekFile(file) == EOF) {
-            printf("break...\n");
             break;
         }
         parcBufferComposer_Release(&composer);
 
+        if (!parcBuffer_HasRemaining(bufferString)) {
+            parcBuffer_Release(&bufferString);
+            continue;
+        }
+
         // Create the original name and store it for later
-        printf("Parsing: %s\n", parcBuffer_ToString(bufferString));
+        //fprintf(stderr, "Parsing: %s\n", parcBuffer_ToString(bufferString));
         CCNxName *name = ccnxName_CreateFromBuffer(bufferString);
         parcBuffer_Release(&bufferString);
         if (name == NULL) {
@@ -393,8 +390,8 @@ main(int argc, char **argv)
         }
 
         // Debug display
-        char *nameString = ccnxName_ToString(name);
-        fprintf(stderr, "Read %d: %s\n", index, nameString);
+        //char *nameString = ccnxName_ToString(name);
+        //fprintf(stderr, "Read %d: %s\n", index, nameString);
 
         CCNxCodecTlvEncoder *encoder = ccnxCodecTlvEncoder_Create();
         ccnxCodecSchemaV1NameCodec_Encode(encoder, CCNxCodecSchemaV1Types_CCNxMessage_Name, name);
@@ -402,7 +399,6 @@ main(int argc, char **argv)
         PARCBuffer *encodedBuffer = ccnxCodecTlvEncoder_CreateBuffer(encoder);
         ccnxCodecTlvEncoder_Destroy(&encoder);
     
-        parcMemory_Deallocate(&nameString);
         parcLinkedList_Append(nameList, encodedBuffer);
 
         ccnxName_Release(&name);
@@ -411,6 +407,7 @@ main(int argc, char **argv)
 
     PARCLinkedList *stats = parcLinkedList_Create();
     PARCHashMap *table = parcHashMap_Create();
+    rng = parcSecureRandom_Create();
 
     PARCIterator *iterator = parcLinkedList_CreateIterator(nameList);
     while (parcIterator_HasNext(iterator)) {
@@ -446,6 +443,12 @@ main(int argc, char **argv)
         PARCBuffer *reverseName = _reverseName(table, obfuscatedName);
         PARCBuffer *plaintext = _decryptContent(nameBuffer, ciphertext);
         uint64_t endDecryptionTime = parcStopwatch_ElapsedTimeNanos(timer);
+
+        parcBuffer_Release(&dataBuffer);
+        parcBuffer_Release(&obfuscatedName);
+        parcBuffer_Release(&originalNameBuffer);
+        parcBuffer_Release(&reverseName);
+        parcBuffer_Release(&plaintext);
 
         TSecStatsEntry *entry = tsecStatsEntry_Create(N);
         entry->obfuscateTime = endObfuscationTime - startObfuscationTime;
