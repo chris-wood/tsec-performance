@@ -4,6 +4,8 @@ import os
 import random
 import time
 
+from matplotlib.font_manager import FontProperties
+
 # matplot lib stuff
 import matplotlib.lines as mlines
 import matplotlib as mpl
@@ -26,7 +28,7 @@ lengths = []
 with open(dataFileName, "r") as f:
     for line in f:
         data = line.strip().split(",")
-        N = int(line[0])
+        N = int(data[0])
         lengths.append(N)
 
         time1, time1sd = float(data[1]), float(data[2])
@@ -46,7 +48,7 @@ with open(dataFileName, "r") as f:
         err4s.append(time4sd)
 
 ind = np.arange(min(lengths), max(lengths) + 1)
-print min(lengths), max(lengths)
+print min(lengths), max(lengths), lengths
 width = 0.2
 
 fig, ax = plt.subplots()
