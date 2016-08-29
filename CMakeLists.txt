@@ -4,12 +4,12 @@ project (fib_perf)
 set(CMAKE_BUILD_TYPE Release)
 
 include_directories(
-        /usr/local/ccnx/dependencies/build/include
-        /Users/cwood/PARC/side/Bindings/usr/include
+        $ENV{CCNX_DEPENDENCIES}/include
+        $ENV{CCNX_HOME}/include
     )
 
 link_directories(
-        /Users/cwood/PARC/side/Bindings/usr/lib
+        $ENV{CCNX_HOME}/lib
     )
 
 set(tsec_SOURCES
@@ -25,7 +25,6 @@ set(TSEC_PERF_LIBRARIES
        ccnx_api_notify
        ccnx_transport_rta
        ccnx_api_control
-       check
        sodium
        )
 
