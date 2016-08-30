@@ -454,6 +454,9 @@ main(int argc, char **argv)
         PARCBuffer *plaintext = _decryptContent(nameBuffer, ciphertext);
         uint64_t endDecryptionTime = parcStopwatch_ElapsedTimeNanos(timer);
 
+        assertTrue(parcBuffer_Equals(originalNameBuffer, reverseName), "Expected name retrieval to succeed");
+        assertTrue(parcBuffer_Equals(plaintext, dataBuffer), "Expected decryption to succeed");
+
         parcBuffer_Release(&dataBuffer);
         parcBuffer_Release(&obfuscatedName);
         parcBuffer_Release(&originalNameBuffer);
