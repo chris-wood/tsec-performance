@@ -63,7 +63,17 @@ _encodeName(CCNxName *name)
 static PARCBuffer *
 _hashBuffer(PARCBuffer *buffer)
 {
-    return parcBuffer_Allocate(32);
+    PARCCryptoHasher *hasher = parcCryptoHasher_Create(PARCCryptoHashType_SHA256);
+    parcCryptoHasher_Init(hasher);
+    parcCryptoHasher_UpdateBuffer(hasher, buffer);
+    PARCCryptoHash *hash = parcCryptoHasher_Finalize(hasher);
+
+    PARCBuffer *digest = parcBuffer_Acquire(parcCryptoHash_GetDigest(hash));
+
+    parcCryptoHash_Release(&hash);
+    parcCryptoHasher_Release(&hasher);
+
+    return digest;
 }
 
 // XXX: encode names using the codec, create TLV from the buffer, use TLV to create final name
