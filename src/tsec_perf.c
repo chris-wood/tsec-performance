@@ -102,6 +102,7 @@ _obfuscateName(PARCBuffer *encodedName)
 
         // Compute the hash of the segment
         PARCBuffer *prefixBuffer = parcBufferComposer_CreateBuffer(composer);
+        parcBuffer_Flip(prefixBuffer);
         PARCBuffer *digest = _hashBuffer(prefixBuffer);
 
         // Add the hashed segment to the new name
