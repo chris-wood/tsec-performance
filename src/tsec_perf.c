@@ -17,7 +17,9 @@
 #include <ctype.h>
 
 #include <openssl/evp.h>
+
 #include <sodium.h>
+#include <argon2.h>
 
 typedef struct {
     PARCBuffer *ciphertext;
@@ -271,13 +273,89 @@ _decryptContent(PARCBuffer *name, CiphertextTag *tag)
     return plaintext;
 }
 
-void
-usage()
+
+typedef struct {
+    int hashLength;
+    int saltLength;
+    uint32_t tCost;
+    uint32_t mCost;
+    uint32_t parallelism;
+
+    PARCBuffer *outputBuffer;
+    PARCBuffer *saltBuffer;
+} Argon2Hasher;
+
+static bool
+_argon2Hasher_Destructor(Argon2Hasher **hasherPtr)
 {
-    fprintf(stderr, "usage: tsec_perf <uri_file> <n>\n");
-    fprintf(stderr, "   - uri_file = A file that contains a list of CCNx URIs\n");
-    fprintf(stderr, "   - n        = The maximum length prefix\n");
+    Argon2Hasher *hasher = *hasherPtr;
+    if (hasher->outputBuffer != NULL) {
+        parcBuffer_Release(&hasher->outputBuffer);
+    }
+    if (hasher->saltBuffer != NULL) {
+        parcBuffer_Release(&hasher->saltBuffer);
+    }
+    return true; // nothing to free
 }
+
+parcObject_Override(Argon2Hasher, PARCObject,
+    .destructor = (PARCObjectDestructor *) _argon2Hasher_Destructor);
+
+Argon2Hasher *
+argon2Hasher_Create(uint32_t t, uint32_t m, uint32_t d)
+{
+    Argon2Hasher *hasher = parcObject_CreateInstance(Argon2Hasher);
+    if (hasher != NULL) {
+        hasher->hashLength = 32;
+        hasher->saltLength = 16;
+        hasher->tCost = t;
+        hasher->mCost = m;
+        hasher->parallelism = d;
+        hasher->outputBuffer = NULL;
+        hasher->saltBuffer = NULL;
+    }
+    return hasher;
+}
+
+int
+argon2Hasher_Init(Argon2Hasher *hasher)
+{
+    if (hasher->outputBuffer != NULL) {
+        parcBuffer_Release(&hasher->outputBuffer);
+    }
+    if (hasher->saltBuffer != NULL) {
+        parcBuffer_Release(&hasher->saltBuffer);
+    }
+
+    hasher->outputBuffer = parcBuffer_Allocate(hasher->hashLength);
+    hasher->saltBuffer = parcBuffer_Allocate(hasher->saltLength);
+    parcSecureRandom_NextBytes(rng, hasher->saltBuffer);
+    return 0;
+}
+
+int
+argon2Hasher_Update(Argon2Hasher *hasher, const void *buffer, size_t length)
+{
+    char *salt = parcBuffer_Overlay(hasher->saltBuffer, 0);
+    char *hash = parcBuffer_Overlay(hasher->outputBuffer, 0);
+    argon2i_hash_raw(hasher->tCost, hasher->mCost, hasher->parallelism, buffer, length, salt, hasher->saltLength, hasher, hasher->hashLength);
+    return 0;
+}
+
+PARCBuffer *
+argon2Hasher_Finalize(Argon2Hasher *hasher)
+{
+    return parcBuffer_Acquire(hasher->outputBuffer);
+}
+
+static PARCCryptoHasherInterface functor_argon2 = {
+    .functor_env = NULL,
+    .hasher_setup = NULL, // create before wrapping
+    .hasher_init = (int (*)(void *)) argon2Hasher_Init,
+    .hasher_update = (int (*)(void *, const void *, size_t)) argon2Hasher_Update,
+    .hasher_finalize = (PARCBuffer *(*)(void *)) argon2Hasher_Finalize,
+    .hasher_destroy = (void  (*)(void **)) _argon2Hasher_Destructor
+};
 
 typedef struct {
     int numComponents;
@@ -348,6 +426,15 @@ displayTotalStats(PARCLinkedList *statList)
     parcBasicStats_Release(&deobfuscateStats);
     parcBasicStats_Release(&encryptStats);
     parcBasicStats_Release(&decryptStats);
+}
+
+void
+usage()
+{
+    fprintf(stderr, "usage: tsec_perf <uri_file> <n>\n");
+    fprintf(stderr, "   - uri_file = A file that contains a list of CCNx URIs\n");
+    fprintf(stderr, "   - n        = The maximum length prefix\n");
+    //fprintf(stderr, "   
 }
 
 int

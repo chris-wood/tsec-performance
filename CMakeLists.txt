@@ -6,10 +6,12 @@ set(CMAKE_BUILD_TYPE Release)
 include_directories(
         $ENV{CCNX_DEPENDENCIES}/include
         $ENV{CCNX_HOME}/include
+        ${CMAKE_SOURCE_DIR}/include
     )
 
 link_directories(
         $ENV{CCNX_HOME}/lib
+        ${CMAKE_SOURCE_DIR}/lib
     )
 
 set(tsec_SOURCES
@@ -26,6 +28,7 @@ set(TSEC_PERF_LIBRARIES
        ccnx_transport_rta
        ccnx_api_control
        sodium
+       argon2
        )
 
 add_executable(tsec_perf ${tsec_SOURCES})
