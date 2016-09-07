@@ -36,6 +36,9 @@ peekFile(FILE *fp)
 }
 
 static PARCSecureRandom *rng; 
+int argon2TCost;
+int argon2MCost;
+int arong2DCost;
 
 PARCBufferComposer *
 readLine(FILE *fp)
@@ -63,9 +66,8 @@ _encodeName(CCNxName *name)
 }
 
 static PARCBuffer *
-_hashBuffer(PARCBuffer *buffer)
+_hashBuffer(PARCCryptoHasher *hasher, PARCBuffer *buffer)
 {
-    PARCCryptoHasher *hasher = parcCryptoHasher_Create(PARCCryptoHashType_SHA256);
     parcCryptoHasher_Init(hasher);
     parcCryptoHasher_UpdateBuffer(hasher, buffer);
     PARCCryptoHash *hash = parcCryptoHasher_Finalize(hasher);
@@ -73,7 +75,6 @@ _hashBuffer(PARCBuffer *buffer)
     PARCBuffer *digest = parcBuffer_Acquire(parcCryptoHash_GetDigest(hash));
 
     parcCryptoHash_Release(&hash);
-    parcCryptoHasher_Release(&hasher);
 
     return digest;
 }
@@ -81,7 +82,7 @@ _hashBuffer(PARCBuffer *buffer)
 // XXX: encode names using the codec, create TLV from the buffer, use TLV to create final name
 
 static PARCBuffer *
-_obfuscateName(PARCBuffer *encodedName)
+_obfuscateName(PARCCryptoHasher *hasher, PARCBuffer *encodedName)
 {
     CCNxCodecTlvDecoder *decoder = ccnxCodecTlvDecoder_Create(encodedName);
     size_t type = ccnxCodecTlvDecoder_GetType(decoder);
@@ -105,7 +106,7 @@ _obfuscateName(PARCBuffer *encodedName)
         // Compute the hash of the segment
         PARCBuffer *prefixBuffer = parcBufferComposer_CreateBuffer(composer);
         parcBuffer_Flip(prefixBuffer);
-        PARCBuffer *digest = _hashBuffer(prefixBuffer);
+        PARCBuffer *digest = _hashBuffer(hasher, prefixBuffer);
 
         // Add the hashed segment to the new name
         parcBufferComposer_PutUint16(fullComposer, innerType);
@@ -302,15 +303,15 @@ parcObject_Override(Argon2Hasher, PARCObject,
     .destructor = (PARCObjectDestructor *) _argon2Hasher_Destructor);
 
 Argon2Hasher *
-argon2Hasher_Create(uint32_t t, uint32_t m, uint32_t d)
+argon2Hasher_Create(void *env)
 {
     Argon2Hasher *hasher = parcObject_CreateInstance(Argon2Hasher);
     if (hasher != NULL) {
         hasher->hashLength = 32;
         hasher->saltLength = 16;
-        hasher->tCost = t;
-        hasher->mCost = m;
-        hasher->parallelism = d;
+        hasher->tCost = argon2TCost;
+        hasher->mCost = argon2MCost;
+        hasher->parallelism = arong2DCost;
         hasher->outputBuffer = NULL;
         hasher->saltBuffer = NULL;
     }
@@ -350,7 +351,7 @@ argon2Hasher_Finalize(Argon2Hasher *hasher)
 
 static PARCCryptoHasherInterface functor_argon2 = {
     .functor_env = NULL,
-    .hasher_setup = NULL, // create before wrapping
+    .hasher_setup = (void *(*)(void *)) argon2Hasher_Create, // create before wrapping
     .hasher_init = (int (*)(void *)) argon2Hasher_Init,
     .hasher_update = (int (*)(void *, const void *, size_t)) argon2Hasher_Update,
     .hasher_finalize = (PARCBuffer *(*)(void *)) argon2Hasher_Finalize,
@@ -428,19 +429,26 @@ displayTotalStats(PARCLinkedList *statList)
     parcBasicStats_Release(&decryptStats);
 }
 
+typedef enum {
+    HashType_SHA256 = 0x00,
+    HashType_Argon2 = 0x01,
+} HashType;
+
 void
 usage()
 {
     fprintf(stderr, "usage: tsec_perf <uri_file> <n>\n");
     fprintf(stderr, "   - uri_file = A file that contains a list of CCNx URIs\n");
     fprintf(stderr, "   - n        = The maximum length prefix\n");
-    //fprintf(stderr, "   
+    fprintf(stderr, "   - hash alg = Identifier for the hash algorithm to use\n");
+    fprintf(stderr, "       SHA256=0\n");
+    fprintf(stderr, "       Argon2=1\n");
 }
 
 int
 main(int argc, char **argv)
 {
-    if (argc != 3) {
+    if (argc < 4) {
         usage();
         exit(-1);
     }
@@ -455,7 +463,7 @@ main(int argc, char **argv)
         exit(-1);
     }
 
-    // Create the FIB and list to hold all of the names
+    // Create the list to hold all of the names
     PARCLinkedList *nameList = parcLinkedList_Create();
 
     int num = 0;
@@ -507,6 +515,24 @@ main(int argc, char **argv)
     PARCHashMap *table = parcHashMap_Create();
     rng = parcSecureRandom_Create();
 
+    int hashAlgorithm = atoi(argv[3]);
+    PARCCryptoHasher *hasher = NULL;
+    switch (hashAlgorithm) {
+        case HashType_SHA256:
+            hasher = parcCryptoHasher_Create(PARCCryptoHashType_SHA256);
+            break;
+        case HashType_Argon2: {
+            argon2TCost = atoi(argv[4]);
+            argon2MCost = atoi(argv[5]);
+            hasher = parcCryptoHasher_CustomHasher(0, functor_argon2);
+            break;
+        }
+        default:
+            usage();
+            exit(-1);
+            break;
+    }
+
     PARCIterator *iterator = parcLinkedList_CreateIterator(nameList);
     while (parcIterator_HasNext(iterator)) {
 
@@ -517,7 +543,7 @@ main(int argc, char **argv)
 
         // 1. Obfuscation
         uint64_t startObfuscationTime = parcStopwatch_ElapsedTimeNanos(timer);
-        PARCBuffer *obfuscatedName = _obfuscateName(nameBuffer);
+        PARCBuffer *obfuscatedName = _obfuscateName(hasher, nameBuffer);
         uint64_t endObfuscationTime = parcStopwatch_ElapsedTimeNanos(timer);
 
         // Save the mapping in the table (this is an offline step)
