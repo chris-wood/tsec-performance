@@ -35,12 +35,15 @@ set(PERF_LIBRARIES
        argon2
        )
 
-add_executable(tsec_perf ${tsec_SOURCES})
-set_target_properties(tsec_perf PROPERTIES COMPILE_FLAGS "-Werror -pg")
-target_link_libraries(tsec_perf ${PERF_LIBRARIES})
-install(TARGETS tsec_perf DESTINATION bin)
+set (targets 
+    tsec_perf
+    obfsucate_perf
+    )
 
-add_executable(obfuscate_perf ${obfuscate_SOURCES})
-set_target_properties(obfuscate_perf PROPERTIES COMPILE_FLAGS "-Werror -pg")
-target_link_libraries(obfuscate_perf ${PERF_LIBRARIES})
-install(TARGETS obfuscate_perf DESTINATION bin)
+foreach(program ${targets})
+    add_executable(${program} ${tsec_SOURCES})
+    set_target_properties(${program} PROPERTIES COMPILE_FLAGS "-Wall -pg")
+    target_link_libraries(${program} ${PERF_LIBRARIES})
+    install(TARGETS ${program} DESTINATION bin)
+endforeach()
+
