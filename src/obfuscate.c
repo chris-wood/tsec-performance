@@ -10,6 +10,10 @@
 #include <parc/security/parc_CryptoHasher.h>
 #include <parc/security/parc_SecureRandom.h>
 
+#include "argon2.c"
+#include "scrypt.c"
+//#include "balloon.c"
+
 #define NUM_TRIALS 1000
 
 typedef struct {
@@ -20,7 +24,6 @@ typedef struct {
 static bool
 _statsEntry_Destructor(StatsEntry **statsPtr)
 {
-    StatsEntry *stats = *statsPtr;
     return true;
 }
 
@@ -46,26 +49,19 @@ usage(char *prog)
     // XXX: print the other parts of the message
 }
 
-// Statically allocated instances of the hash functions go here
-static PARCCryptoHasher *sha256Hasher;
-static PARCCryptoHasher *argon2Hasher_XX;
-
-// Typedef function pointer for the hash function
-typedef PARCBuffer *(*HashFunction)(void *, PARCBuffer *);
-
 PARCBuffer *
-hashFunction_SHA256(void *state, PARCBuffer *buffer)
+hashFunction(PARCCryptoHasher *instance, PARCBuffer *buffer)
 {
-    parcCryptoHasher_Init(sha256Hasher);
-    parcCryptoHasher_UpdateBuffer(sha256Hasher, buffer);
-    PARCCryptoHash *hash = parcCryptoHasher_Finalize(sha256Hasher);
+    parcCryptoHasher_Init(instance);
+    parcCryptoHasher_UpdateBuffer(instance, buffer);
+    PARCCryptoHash *hash = parcCryptoHasher_Finalize(instance);
     PARCBuffer *digest = parcBuffer_Acquire(parcCryptoHash_GetDigest(hash));
     parcCryptoHash_Release(&hash);
     return digest;
 }
 
 PARCLinkedList *
-profileObfuscationFunction(HashFunction hashFunction, void *state, int low, int high)
+profileObfuscationFunction(PARCCryptoHasher *hasher, int low, int high)
 {
     PARCLinkedList *results = parcLinkedList_Create();
 
@@ -81,10 +77,11 @@ profileObfuscationFunction(HashFunction hashFunction, void *state, int low, int 
             // Generate the input buffer to be hashed
             PARCBuffer *input = parcBuffer_Allocate(i);
             parcSecureRandom_NextBytes(random, input);
+            //fprintf(stderr, "Hashing %d %d\n", i, t);
 
             // Compute the hash of the input
             uint64_t startTime = parcStopwatch_ElapsedTimeNanos(timer);
-            PARCBuffer *output = hashFunction(state, input);
+            PARCBuffer *output = hashFunction(hasher, input);
             uint64_t endTime = parcStopwatch_ElapsedTimeNanos(timer);
             totalTime += (endTime - startTime);
 
@@ -126,19 +123,24 @@ main(int argc, char **argv)
     int high = atoi(argv[3]);
 
     // Create the statically allocated hashers
-    sha256Hasher = parcCryptoHasher_Create(PARCCryptoHashType_SHA256);
+    PARCCryptoHasher *sha256Hasher = parcCryptoHasher_Create(PARCCryptoHashType_SHA256);
+    PARCCryptoHasher *argon2Hasher_2_8 = parcCryptoHasher_CustomHasher(0, functor_argon2_2_8);
+    PARCCryptoHasher *scryptHasher = parcCryptoHasher_CustomHasher(0, functor_scrypt);
 
     // switch on the algorithm
-    HashFunction function;
-    void *state;
+    PARCCryptoHasher *hasher;
     if (strcmp(alg, "SHA256") == 0) {
-        function = hashFunction_SHA256;
+        hasher = sha256Hasher;
+    } else if (strcmp(alg, "ARGON_2_8") == 0) {
+        hasher = argon2Hasher_2_8;
+    } else if (strcmp(alg, "scrypt") == 0) {
+        hasher = scryptHasher;
     } else {
         usage(argv[0]);
         exit(-2);
     }
 
-    PARCLinkedList *results = profileObfuscationFunction(function, state, low, high);
+    PARCLinkedList *results = profileObfuscationFunction(hasher, low, high);
     processResults(results);
 }
 
