@@ -1,19 +1,15 @@
 #!/bin/bash
 
 PROGRAM=$1
-URI_FILE=$2
-PREFIX_LENGTH=$3
+OUTFILE=$2
+LENGTHS=( 1500 3000 4500 6000 7500 9000 )
+ALGS=( "SHA256" "ARGON2" ) #"scrypt" )
 
-OUTFILE_SHA256=${URI_FILE}_SHA256.out
-OUTFILE_Argon2=${URI_FILE}_Argon2.out
-touch ${OUTFILE_SHA256}
-touch ${OUTFILE_Argon2}
-
-for i in `seq 1 ${PREFIX_LENGTH}`;
+for alg in "${ALGS[@]}"
 do
-    echo ${PROGRAM} ${URI_FILE} ${i}
-    ${PROGRAM} ${URI_FILE} ${i} 0 >> ${OUTFILE_SHA256}
-
-    # default Argon2 parameters
-    ${PROGRAM} ${URI_FILE} ${i} 1 3 12 >> ${OUTFILE_Argon2}
+    for l in "${LENGTHS[@]}"
+    do
+        echo ${PROGRAM} ${alg} ${l} ${l}
+        ${PROGRAM} ${alg} ${l} ${l} >> ${OUTFILE}
+    done
 done
