@@ -100,12 +100,12 @@ profileObfuscationFunction(PARCCryptoHasher *hasher, int low, int high)
 }
 
 void
-processResults(PARCLinkedList *results)
+processResults(char *alg, PARCLinkedList *results)
 {
     PARCIterator *iterator = parcLinkedList_CreateIterator(results);
     while (parcIterator_HasNext(iterator)) {
         StatsEntry *entry = (StatsEntry *) parcIterator_Next(iterator);
-        printf("%d %f\n", entry->length, entry->averageTime);
+        printf("%s,%d,%f\n", alg, entry->length, entry->averageTime);
     }
 }
 
@@ -124,15 +124,15 @@ main(int argc, char **argv)
 
     // Create the statically allocated hashers
     PARCCryptoHasher *sha256Hasher = parcCryptoHasher_Create(PARCCryptoHashType_SHA256);
-    PARCCryptoHasher *argon2Hasher_2_8 = parcCryptoHasher_CustomHasher(0, functor_argon2_2_8);
+    PARCCryptoHasher *argon2Hasher = parcCryptoHasher_CustomHasher(0, functor_argon2);
     PARCCryptoHasher *scryptHasher = parcCryptoHasher_CustomHasher(0, functor_scrypt);
 
     // switch on the algorithm
     PARCCryptoHasher *hasher;
     if (strcmp(alg, "SHA256") == 0) {
         hasher = sha256Hasher;
-    } else if (strcmp(alg, "ARGON_2_8") == 0) {
-        hasher = argon2Hasher_2_8;
+    } else if (strcmp(alg, "ARGON2") == 0) {
+        hasher = argon2Hasher;
     } else if (strcmp(alg, "scrypt") == 0) {
         hasher = scryptHasher;
     } else {
@@ -141,6 +141,6 @@ main(int argc, char **argv)
     }
 
     PARCLinkedList *results = profileObfuscationFunction(hasher, low, high);
-    processResults(results);
+    processResults(alg, results);
 }
 
