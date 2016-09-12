@@ -25,25 +25,27 @@ err3s = []
 avg4s = []
 err4s = []
 lengths = []
+factor = 1000
+
 with open(dataFileName, "r") as f:
     for line in f:
         data = line.strip().split(",")
         N = int(data[0])
         lengths.append(N)
 
-        time1, time1sd = float(data[1]), float(data[2])
+        time1, time1sd = float(data[1]) / factor, float(data[2]) / factor
         avg1s.append(time1)
         err1s.append(time1sd)
 
-        time2, time2sd = float(data[3]), float(data[4])
+        time2, time2sd = float(data[3]) / factor, float(data[4]) / factor
         avg2s.append(time2)
         err2s.append(time2sd)
 
-        time3, time3sd = float(data[5]), float(data[6])
+        time3, time3sd = float(data[5]) / factor, float(data[6]) / factor
         avg3s.append(time3)
         err3s.append(time3sd)
 
-        time4, time4sd = float(data[7]), float(data[8])
+        time4, time4sd = float(data[7]) / factor, float(data[8]) / factor
         avg4s.append(time4)
         err4s.append(time4sd)
 
@@ -60,7 +62,11 @@ p2 = ax.bar(ind + width, avg2s, width=width, color='y', yerr=err2s) #, yerr=menS
 p3 = ax.bar(ind + 2*width, avg3s, width=width, color='g', yerr=err3s) #, yerr=menStd)
 p4 = ax.bar(ind + 3*width, avg4s, width=width, color='b', yerr=err4s) #, yerr=menStd)
 
-ax.set_ylabel('Time (ns)')
+#font = {'fontname': 'Verdana'}
+# **font
+
+ax.set_xlabel('Number of Segments')
+ax.set_ylabel('Time (us)')
 ax.set_title('')
 ax.set_xticks(ind + 2*width)
 ax.set_xticklabels(lengths)
