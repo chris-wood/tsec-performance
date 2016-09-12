@@ -7,18 +7,18 @@ include_directories(
         $ENV{CCNX_DEPENDENCIES}/include
         $ENV{CCNX_HOME}/include
         ${CMAKE_SOURCE_DIR}/include
-        /Users/cwood/Projects/balloon/include
+        #/Users/cwood/Projects/balloon/include
     )
 
 link_directories(
         $ENV{CCNX_HOME}/lib
         ${CMAKE_SOURCE_DIR}/lib
-        /Users/cwood/Projects/balloon/build/libballoon/
-        /Users/cwood/Projects/balloon/build/echo
-        /Users/cwood/Projects/balloon/build/keccak
-        /Users/cwood/Projects/balloon/build/libballoon/
-        /Users/cwood/Projects/balloon/build/blake2b
-        /Users/cwood/Projects/balloon/build/simpira
+        #/Users/cwood/Projects/balloon/build/libballoon/
+        #/Users/cwood/Projects/balloon/build/echo
+        #/Users/cwood/Projects/balloon/build/keccak
+        #/Users/cwood/Projects/balloon/build/libballoon/
+        #/Users/cwood/Projects/balloon/build/blake2b
+        #/Users/cwood/Projects/balloon/build/simpira
     )
 
 set(tsec_SOURCES
