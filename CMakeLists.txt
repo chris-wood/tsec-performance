@@ -29,6 +29,10 @@ set(obfuscate_SOURCES
     src/obfuscate.c
     )
 
+set(single_SOURCES
+    src/single.c
+    )
+
 set(PERF_LIBRARIES
        longbow
        longbow-ansiterm
@@ -54,6 +58,7 @@ set(PERF_LIBRARIES
 set (targets 
     tsec
     obfuscate
+    single
     )
 
 foreach(program ${targets})
