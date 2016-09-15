@@ -12,6 +12,7 @@
 
 #include "argon2.c"
 #include "scrypt.c"
+#include "sha256.c"
 //#include "balloon.c"
 
 #define NUM_TRIALS 1000
@@ -52,7 +53,6 @@ usage(char *prog)
 PARCBuffer *
 hashFunction(PARCCryptoHasher *instance, PARCBuffer *buffer)
 {
-    parcCryptoHasher_Init(instance);
     parcCryptoHasher_UpdateBuffer(instance, buffer);
     PARCCryptoHash *hash = parcCryptoHasher_Finalize(instance);
     PARCBuffer *digest = parcBuffer_Acquire(parcCryptoHash_GetDigest(hash));
@@ -77,6 +77,7 @@ profileObfuscationFunction(PARCCryptoHasher *hasher, int low, int high)
             // Generate the input buffer to be hashed
             PARCBuffer *input = parcBuffer_Allocate(i);
             parcSecureRandom_NextBytes(random, input);
+            parcCryptoHasher_Init(hasher);
             //fprintf(stderr, "Hashing %d %d\n", i, t);
 
             // Compute the hash of the input
@@ -123,7 +124,7 @@ main(int argc, char **argv)
     int high = atoi(argv[3]);
 
     // Create the statically allocated hashers
-    PARCCryptoHasher *sha256Hasher = parcCryptoHasher_Create(PARCCryptoHashType_SHA256);
+    PARCCryptoHasher *sha256Hasher = parcCryptoHasher_CustomHasher(0, functor_sha256);
     PARCCryptoHasher *argon2Hasher = parcCryptoHasher_CustomHasher(0, functor_argon2);
     PARCCryptoHasher *scryptHasher = parcCryptoHasher_CustomHasher(0, functor_scrypt);
 

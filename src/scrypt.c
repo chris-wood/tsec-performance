@@ -4,6 +4,10 @@
 #include <parc/security/parc_SecureRandom.h>
 #include <parc/security/parc_CryptoHasher.h>
 
+int scrypt_N = (1 << 14);
+int scrypt_r = 8;
+int scrypt_p = 1;
+
 typedef struct {
     int hashLength;
     int saltLength;
@@ -42,9 +46,9 @@ scryptHasher_Create(void *env)
         hasher->hashLength = 32;
         hasher->saltLength = 16;
 
-        hasher->N = (1 << 14);
-        hasher->r = 8;
-        hasher->p = 1;
+        hasher->N = scrypt_N;
+        hasher->r = scrypt_r;
+        hasher->p = scrypt_p;
 
         hasher->rng = parcSecureRandom_Create();
         hasher->outputBuffer = NULL;
@@ -75,8 +79,8 @@ scryptHasher_Update(scryptHasher *hasher, const void *buffer, size_t length)
 {
     const uint8_t *salt = parcBuffer_Overlay(hasher->saltBuffer, 0);
     uint8_t *hash = parcBuffer_Overlay(hasher->outputBuffer, 0);
-    int result = libscrypt_scrypt(buffer, length, salt, hasher->saltLength, (1 << 14),
-                8, 1, hash, hasher->hashLength);
+    int result = libscrypt_scrypt(buffer, length, salt, hasher->saltLength, SCRYPT_N,
+                SCRYPT_r, SCRYPT_p, hash, hasher->hashLength);
     return result;
 }
 
