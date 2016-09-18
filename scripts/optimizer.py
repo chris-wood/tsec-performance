@@ -3,8 +3,10 @@ import subprocess
 import time
 from datetime import datetime
 
-def argon2(params):
-    pass
+def argon2(prog, params):
+    process = subprocess.Popen([prog, "ARGON2", str(params.t), str(params.m), str(params.d)], stdout=subprocess.PIPE)
+    pout, err = process.communicate()
+    return float(pout) / 1000.0 # ns to us
 
 class Argon2Params(object):
     def __init__(self, t = 1, m = 1, d = 1):
@@ -28,6 +30,21 @@ class Argon2Params(object):
 
         return params
 
+    def __repr__(self):
+        return "(%d, %d, %d)" % (self.t, self.m, self.d)
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.t == other.t and self.m == other.m and self.d == other.da
+        else:
+            return False
+
+    def __cmp__(self, other):
+        if isinstance(other, self.__class__):
+            return self.t == other.t and self.m == other.m and self.d == other.da
+        else:
+            return False
+
 def scrypt(prog, params):
     process = subprocess.Popen([prog, "scrypt", str(params.N), str(params.r), str(params.p)], stdout=subprocess.PIPE)
     pout, err = process.communicate()
@@ -41,9 +58,9 @@ class ScryptParams(object):
 
     def neighbors(self):
         params = []
-        if self.N > 1:
-            params.append(ScryptParams(self.N - 1, self.r, self.p))
-        params.append(ScryptParams(self.N + 1, self.r, self.p))
+        if self.N >> 2 > 1:
+            params.append(ScryptParams(self.N >> 2, self.r, self.p))
+        params.append(ScryptParams(self.N << 2, self.r, self.p))
 
         if self.r > 1:
             params.append(ScryptParams(self.N, self.r - 1, self.p))
@@ -58,30 +75,30 @@ class ScryptParams(object):
 ### https://en.wikipedia.org/wiki/Hill_climbing
 def optimize(prog, hasher, initialParams, P):
     current = initialParams
-    seen = []
+    seen = set()
     while True:
         L = current.neighbors()
         nextEval = -1
         nextNode = None
 
         for param in L:
-            if param in seen: # don't repeat old params
-                continue
-            seen.append(param)
-            thetime = hasher(prog, param)
-            if nextEval == -1:
-                nextNode = param
-                nextEval = thetime
-            elif thetime > P and thetime < nextEval:
-                nextNode = param
-                nextEval = thetime
+            if str(param) not in seen: # don't repeat old params
+                seen.add(str(param))
+                thetime = hasher(prog, param)
+                if nextEval == -1:
+                    nextNode = param
+                    nextEval = thetime
+                elif thetime > P and thetime < nextEval:
+                    nextNode = param
+                    nextEval = thetime
         currentTime = hasher(prog, current)
-        print currentTime, P
         if nextEval == -1 or (currentTime > P and currentTime < nextEval):
             return current
         current = nextNode
+    
+    return current
 
 prog = sys.argv[1]
 P = float(sys.argv[2])
-params = optimize(prog, scrypt, ScryptParams(), P)
+params = optimize(prog, argon2, Argon2Params(), P)
 print params
