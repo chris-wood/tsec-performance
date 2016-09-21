@@ -124,7 +124,7 @@ def optimize_hill(prog, hasher, initialParams, target):
         if nextEval > currentTime and nextEval < target:
             current = nextNode
             currentTime = nextEval
-        else:
+        elif thetime > currentTime and thetime < target: # [nextEval ... currentTime ... target]
             current = current
             currentTime = thetime
 
