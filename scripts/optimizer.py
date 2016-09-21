@@ -1,6 +1,7 @@
 import sys
 import subprocess
 import time
+import random
 from datetime import datetime
 
 def argon2(prog, params):
@@ -9,7 +10,7 @@ def argon2(prog, params):
     return float(pout) / 1000.0 # ns to us
 
 class Argon2Params(object):
-    def __init__(self, t = 1, m = 1, d = 1):
+    def __init__(self, t = 3, m = 12, d = 1):
         self.t = t
         self.m = m
         self.d = d
@@ -17,8 +18,8 @@ class Argon2Params(object):
     def neighbors(self):
         params = []
         if self.t > 1:
-            params.append(Argon2Params(self.t - 1, self.m, self.d))
-        params.append(Argon2Params(self.t + 1, self.m, self.d))
+            params.append(Argon2Params(self.t >> 1, self.m, self.d))
+        params.append(Argon2Params(self.t << 1, self.m, self.d))
 
         if self.m > 1:
             params.append(Argon2Params(self.t, self.m - 1, self.d))
@@ -76,14 +77,25 @@ class ScryptParams(object):
 def optimize(prog, hasher, initialParams, P):
     current = initialParams
     seen = set()
+    nextSet = []
     while True:
+
         L = current.neighbors()
+        for p in nextSet:
+            L.append(p)
+
+        random.shuffle(L)
+        nextSet = []
+
         nextEval = -1
         nextNode = None
+
 
         for param in L:
             if str(param) not in seen: # don't repeat old params
                 seen.add(str(param))
+                for p in param.neighbors():
+                    nextSet.append(p)
                 thetime = hasher(prog, param)
                 if nextEval == -1:
                     nextNode = param
@@ -91,10 +103,15 @@ def optimize(prog, hasher, initialParams, P):
                 elif thetime > P and thetime < nextEval:
                     nextNode = param
                     nextEval = thetime
+
         currentTime = hasher(prog, current)
-        if nextEval == -1 or (currentTime > P and currentTime < nextEval):
+        if nextEval == -1:
+            return current
+        if currentTime > P and currentTime < nextEval:
             return current
         current = nextNode
+
+        print current, len(L), nextEval
     
     return current
 
