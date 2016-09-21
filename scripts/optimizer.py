@@ -18,17 +18,26 @@ class Argon2Params(object):
     def neighbors(self):
         params = []
         if self.t > 1:
-            params.append(Argon2Params(self.t >> 1, self.m, self.d))
-        params.append(Argon2Params(self.t << 1, self.m, self.d))
+            params.append(Argon2Params(self.t - 1, self.m, self.d))
+        params.append(Argon2Params(self.t + 1, self.m, self.d))
 
         if self.m > 1:
             params.append(Argon2Params(self.t, self.m - 1, self.d))
         params.append(Argon2Params(self.t, self.m + 1, self.d))
-       
+     
+        '''
         if self.d > 1:
             params.append(Argon2Params(self.t, self.m, self.d - 1))
         params.append(Argon2Params(self.t, self.m, self.d + 1))
+        '''
 
+        return params
+
+    def successors(self):
+        params = []
+        params.append(Argon2Params(self.t + 1, self.m, self.d))
+        params.append(Argon2Params(self.t, self.m + 1, self.d))
+        params.append(Argon2Params(self.t, self.m, self.d + 1))
         return params
 
     def __repr__(self):
@@ -73,9 +82,13 @@ class ScryptParams(object):
 
         return params
 
+def optimize_bnb(prog, hasher, initialParams, target):
+    pass
+
 ### https://en.wikipedia.org/wiki/Hill_climbing
-def optimize(prog, hasher, initialParams, P):
+def optimize_hill(prog, hasher, initialParams, target):
     current = initialParams
+    currentTime = -1
     seen = set()
     nextSet = []
     while True:
@@ -85,37 +98,41 @@ def optimize(prog, hasher, initialParams, P):
             L.append(p)
 
         random.shuffle(L)
+        if len(L) > 100:
+            L = L[0:100]
         nextSet = []
 
         nextEval = -1
         nextNode = None
 
-
         for param in L:
             if str(param) not in seen: # don't repeat old params
                 seen.add(str(param))
+                thetime = hasher(prog, param)
                 for p in param.neighbors():
                     nextSet.append(p)
-                thetime = hasher(prog, param)
-                if nextEval == -1:
-                    nextNode = param
-                    nextEval = thetime
-                elif thetime > P and thetime < nextEval:
+
+                if thetime > nextEval and thetime < target:
                     nextNode = param
                     nextEval = thetime
 
-        currentTime = hasher(prog, current)
-        if nextEval == -1:
-            return current
-        if currentTime > P and currentTime < nextEval:
-            return current
-        current = nextNode
+        thetime = hasher(prog, current)
+        if thetime > nextEval and thetime < target:
+            return current, currentTime
 
-        print current, len(L), nextEval
+        # [currentTime ... nextEval ... target]
+        if nextEval > currentTime and nextEval < target:
+            current = nextNode
+            currentTime = nextEval
+        else:
+            current = current
+            currentTime = thetime
+
+        print current, currentTime, len(L)
     
-    return current
+    return current, currentTime
 
 prog = sys.argv[1]
 P = float(sys.argv[2])
-params = optimize(prog, argon2, Argon2Params(), P)
-print params
+params, thetime = optimize_hill(prog, argon2, Argon2Params(), P)
+print params, thetime
