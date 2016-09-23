@@ -164,7 +164,7 @@ def optimize_hill(prog, initialParams, target):
 def optimize_dfs(prog, initialParams, target, epsilon = 0.1):
     queue = [(initialParams, 0)]
     visited = set()
-    visited.add(initialParams)
+    visited.add(str(initialParams))
     results = {}
     while len(queue) > 0:
         (current, lasttime) = queue.pop()
@@ -172,8 +172,8 @@ def optimize_dfs(prog, initialParams, target, epsilon = 0.1):
 
         if thetime < P and abs(thetime - lasttime) >= epsilon:
             for nextParams in current.successors():
-                if nextParams not in visited:
-                    visited.add(nextParams)
+                if str(nextParams) not in visited:
+                    visited.add(str(nextParams))
                     queue.append((nextParams, thetime))
         else:
             results[current] = lasttime
