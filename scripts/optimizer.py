@@ -190,7 +190,7 @@ def find_min_params(results):
     return max_key
 
 
-#prog = sys.argv[1]
+prog = sys.argv[1]
 #scrypt = ScryptParams(1, 1, 1)
 #print scrypt.process(prog)
 
