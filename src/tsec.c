@@ -16,8 +16,6 @@
 #include <stdio.h>
 #include <ctype.h>
 
-#include <openssl/evp.h>
-
 #include <sodium.h>
 
 #include "argon2.c"
@@ -36,14 +34,14 @@ peekFile(FILE *fp)
     return c;
 }
 
-static PARCSecureRandom *rng; 
+static PARCSecureRandom *rng;
 
 PARCBufferComposer *
 readLine(FILE *fp)
 {
     PARCBufferComposer *composer = parcBufferComposer_Create();
     char curr = fgetc(fp);
-    while ((isalnum(curr) || curr == ':' || curr == '/' || curr == '.' || 
+    while ((isalnum(curr) || curr == ':' || curr == '/' || curr == '.' ||
             curr == '_' || curr == '(' || curr == ')' || curr == '[' ||
             curr == ']' || curr == '-' || curr == '%' || curr == '+' ||
             curr == '=' || curr == ';' || curr == '$' || curr == '\'') && curr != EOF) {
@@ -222,19 +220,19 @@ _deriveKeyFromName(PARCBuffer *nameBuffer)
 
     uint8_t *nameArray = parcByteArray_Array(parcBuffer_Array(nameDigest));
     size_t nameArrayLength = parcBuffer_Remaining(nameDigest);
-    
+
     uint8_t *keyArray = parcByteArray_Array(parcBuffer_Array(keyBuffer));
     size_t keyLength = parcBuffer_Remaining(keyBuffer);
-    
+
     uint8_t keyid[crypto_generichash_blake2b_SALTBYTES] = {0};
     uint8_t appid[crypto_generichash_blake2b_PERSONALBYTES] = {0};
-    
+
     crypto_generichash_blake2b_salt_personal(keyArray, keyLength,
                                             NULL, 0,
                                             nameArray, nameArrayLength,
                                             keyid, appid);
     parcCryptoHash_Release(&hashDigest);
-    
+
     return keyBuffer;
 }
 
@@ -324,13 +322,13 @@ displayTotalStats(PARCLinkedList *statList)
     while (parcIterator_HasNext(itr)) {
         TSecStatsEntry *entry = (TSecStatsEntry *) parcIterator_Next(itr);
         N = entry->numComponents;
-        
+
         parcBasicStats_Update(obfuscateStats, entry->obfuscateTime);
         parcBasicStats_Update(deobfuscateStats, entry->deobfuscateTime);
         parcBasicStats_Update(encryptStats, entry->encryptTime);
         parcBasicStats_Update(decryptStats, entry->decryptTime);
     }
-    
+
     printf("%d,", N);
     printf("%f,%f,", parcBasicStats_Mean(obfuscateStats), parcBasicStats_StandardDeviation(obfuscateStats));
     printf("%f,%f,", parcBasicStats_Mean(deobfuscateStats), parcBasicStats_StandardDeviation(deobfuscateStats));
@@ -418,7 +416,7 @@ main(int argc, char **argv)
         ccnxCodecTlvEncoder_Finalize(encoder);
         PARCBuffer *encodedBuffer = ccnxCodecTlvEncoder_CreateBuffer(encoder);
         ccnxCodecTlvEncoder_Destroy(&encoder);
-    
+
         parcLinkedList_Append(nameList, encodedBuffer);
 
         ccnxName_Release(&name);
@@ -511,4 +509,3 @@ main(int argc, char **argv)
 
     return 0;
 }
-

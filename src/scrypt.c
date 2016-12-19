@@ -32,7 +32,7 @@ _scryptHasher_Destructor(scryptHasher **hasherPtr)
         parcBuffer_Release(&hasher->saltBuffer);
     }
     parcSecureRandom_Release(&hasher->rng);
-    return true; 
+    return true;
 }
 
 parcObject_Override(scryptHasher, PARCObject,
@@ -74,6 +74,7 @@ scryptHasher_Init(scryptHasher *hasher)
 }
 
 // http://stackoverflow.com/questions/11126315/what-are-optimal-scrypt-work-factors
+// make LDFLAGS= CFLAGS_EXTRA=
 int
 scryptHasher_Update(scryptHasher *hasher, const void *buffer, size_t length)
 {
