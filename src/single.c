@@ -5,7 +5,7 @@
 #include <parc/algol/parc_Buffer.h>
 #include <parc/algol/parc_SafeMemory.h>
 #include <parc/algol/parc_LinkedList.h>
-#include <parc/developer/parc_StopWatch.h>
+#include <parc/developer/parc_Stopwatch.h>
 
 #include <parc/security/parc_CryptoHasher.h>
 #include <parc/security/parc_SecureRandom.h>

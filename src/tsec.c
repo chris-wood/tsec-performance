@@ -4,7 +4,7 @@
 #include <parc/algol/parc_Iterator.h>
 #include <parc/algol/parc_HashMap.h>
 
-#include <parc/developer/parc_StopWatch.h>
+#include <parc/developer/parc_Stopwatch.h>
 #include <parc/statistics/parc_BasicStats.h>
 #include <parc/security/parc_SecureRandom.h>
 
