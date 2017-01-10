@@ -31,7 +31,17 @@ include_directories(${CCNX_TRANSPORT_RTA_INCLUDE_DIRS})
 find_package( CCNX_Portal REQUIRED )
 include_directories(${CCNX_PORTAL_INCLUDE_DIRS})
 
-find_library(ARGON argon2)
+#find_library(ARGON argon2)
+
+# add the automatically determined parts of the RPATH
+# which point to directories outside the build tree to the install RPATH
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH true)
+
+# the RPATH to be used when installing, but only if it's not a system directory
+list(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES "${CMAKE_INSTALL_PREFIX}/lib" isSystemDir)
+if("${isSystemDir}" STREQUAL "-1")
+    set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+endif("${isSystemDir}" STREQUAL "-1")
 
 include_directories(
         $ENV{CCNX_HOME}/include
@@ -77,7 +87,6 @@ set(targets
 
 foreach(program ${targets})
     MESSAGE("Building " ${program})
-    MESSAGE(${LONGBOW_LIBRARY})
     add_executable(${program} ${${program}_SOURCES})
     set_target_properties(${program} PROPERTIES COMPILE_FLAGS "-Wall -pg")
     target_link_libraries(${program} ${PERF_LIBRARIES})
