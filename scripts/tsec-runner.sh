@@ -14,6 +14,7 @@ do
     echo ${PROGRAM} ${URI_FILE} ${i}
     ${PROGRAM} ${URI_FILE} ${i} 0 >> ${OUTFILE_SHA256}
 
-    # default Argon2 parameters
-    ${PROGRAM} ${URI_FILE} ${i} 1 3 12 >> ${OUTFILE_Argon2}
+    # default Argon2 parameters --  3 12
+    # ... provided from libsodium
+    ${PROGRAM} ${URI_FILE} ${i} 1 >> ${OUTFILE_Argon2}
 done

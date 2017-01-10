@@ -19,12 +19,24 @@
 #include <sodium.h>
 
 #include "argon2.c"
+#include "scrypt.c"
+#include "sha256.c"
 
 typedef struct {
     PARCBuffer *ciphertext;
     PARCBuffer *tag;
     PARCBuffer *IV;
 } CiphertextTag;
+
+static size_t dataSizes[] = {1024, 2048, 4096, 8192};
+static int numDataSizes = sizeof(dataSizes) / sizeof(size_t);
+
+static int
+randomDataSize()
+{
+    uint32_t randomWord = randombytes_random();
+    return dataSizes[randomWord % numDataSizes];
+}
 
 int
 peekFile(FILE *fp)
@@ -365,6 +377,8 @@ main(int argc, char **argv)
         exit(-1);
     }
 
+    argon2_init();
+
     char *fname = argv[1];
     int N = atoi(argv[2]);
 
@@ -373,6 +387,26 @@ main(int argc, char **argv)
         perror("Could not open file");
         usage();
         exit(-1);
+    }
+
+    int hashAlgorithm = atoi(argv[3]);
+    PARCCryptoHasher *hasher = NULL;
+    switch (hashAlgorithm) {
+        case HashType_SHA256:
+            hasher = parcCryptoHasher_Create(PARCCryptoHashType_SHA256);
+            break;
+        case HashType_Argon2: {
+            if (argc >= 6) { // override the default parameters if present
+                argon2TCost = atoi(argv[4]);
+                argon2MCost = atoi(argv[5]);
+            }
+            hasher = parcCryptoHasher_CustomHasher(0, functor_argon2);
+            break;
+        }
+        default:
+            usage();
+            exit(-1);
+            break;
     }
 
     // Create the list to hold all of the names
@@ -426,25 +460,6 @@ main(int argc, char **argv)
     PARCLinkedList *stats = parcLinkedList_Create();
     PARCHashMap *table = parcHashMap_Create();
     rng = parcSecureRandom_Create();
-
-    int hashAlgorithm = atoi(argv[3]);
-    PARCCryptoHasher *hasher = NULL;
-    switch (hashAlgorithm) {
-        case HashType_SHA256:
-            hasher = parcCryptoHasher_Create(PARCCryptoHashType_SHA256);
-            break;
-        case HashType_Argon2: {
-            argon2TCost = atoi(argv[4]);
-            argon2MCost = atoi(argv[5]);
-            hasher = parcCryptoHasher_CustomHasher(0, functor_argon2);
-            break;
-        }
-        default:
-            usage();
-            exit(-1);
-            break;
-    }
-
     PARCIterator *iterator = parcLinkedList_CreateIterator(nameList);
     while (parcIterator_HasNext(iterator)) {
 
@@ -469,7 +484,8 @@ main(int argc, char **argv)
         assertNotNull(originalNameBuffer, "Expected the original name to be retrieved");
 
         // 3. Encryption
-        PARCBuffer *dataBuffer = _createRandomBuffer(1024);
+        size_t dataSize = randomDataSize();
+        PARCBuffer *dataBuffer = _createRandomBuffer(dataSize);
         uint64_t startEncryptionTime = parcStopwatch_ElapsedTimeNanos(timer);
         CiphertextTag *ciphertext = _encryptContent(nameBuffer, dataBuffer);
         uint64_t endEncryptionTime = parcStopwatch_ElapsedTimeNanos(timer);

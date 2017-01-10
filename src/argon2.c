@@ -1,4 +1,5 @@
 #include <argon2.h>
+#include <sodium/crypto_pwhash.h>
 
 #include <parc/algol/parc_Buffer.h>
 #include <parc/security/parc_SecureRandom.h>
@@ -7,6 +8,13 @@
 int argon2TCost;
 int argon2MCost;
 int argon2DCost;
+
+void
+argon2_init()
+{
+    argon2TCost = crypto_pwhash_OPSLIMIT_MODERATE;
+    argon2MCost = crypto_pwhash_MEMLIMIT_MODERATE;
+}
 
 typedef struct {
     int hashLength;
@@ -31,7 +39,7 @@ _argon2Hasher_Destructor(Argon2Hasher **hasherPtr)
         parcBuffer_Release(&hasher->saltBuffer);
     }
     parcSecureRandom_Release(&hasher->rng);
-    return true; 
+    return true;
 }
 
 parcObject_Override(Argon2Hasher, PARCObject,

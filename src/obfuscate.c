@@ -110,13 +110,15 @@ processResults(char *alg, PARCLinkedList *results)
     }
 }
 
-int 
+int
 main(int argc, char **argv)
 {
     if (argc < 4) {
         usage(argv[0]);
         exit(-1);
     }
+
+    argon2_init();
 
     // extract the parameters
     char *alg = argv[1];
@@ -144,4 +146,3 @@ main(int argc, char **argv)
     PARCLinkedList *results = profileObfuscationFunction(hasher, low, high);
     processResults(alg, results);
 }
-
