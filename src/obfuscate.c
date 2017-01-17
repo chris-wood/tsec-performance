@@ -63,17 +63,18 @@ hashFunction(PARCCryptoHasher *instance, PARCBuffer *buffer)
 PARCLinkedList *
 profileObfuscationFunction(PARCCryptoHasher *hasher, int low, int high)
 {
+    int i, t;
     PARCLinkedList *results = parcLinkedList_Create();
 
     PARCSecureRandom *random = parcSecureRandom_Create();
 
     // Compute an average time for each input size
-    for (int i = low; i <= high; i++) {
+    for (i = low; i <= high; i++) {
         // Compute an average value for this one entry
         PARCStopwatch *timer = parcStopwatch_Create();
         parcStopwatch_Start(timer);
         uint64_t totalTime = 0;
-        for (int t = 0; t < NUM_TRIALS; t++) {
+        for (t = 0; t < NUM_TRIALS; t++) {
             // Generate the input buffer to be hashed
             PARCBuffer *input = parcBuffer_Allocate(i);
             parcSecureRandom_NextBytes(random, input);

@@ -14,6 +14,7 @@ argon2_init()
 {
     argon2TCost = crypto_pwhash_OPSLIMIT_MODERATE;
     argon2MCost = crypto_pwhash_MEMLIMIT_MODERATE;
+    argon2DCost = 1;
 }
 
 typedef struct {
