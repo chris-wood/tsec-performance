@@ -5,6 +5,7 @@ import random
 import time
 
 from matplotlib.font_manager import FontProperties
+from matplotlib.backends.backend_pdf import PdfPages
 
 # matplot lib stuff
 import matplotlib.lines as mlines
@@ -12,6 +13,9 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import math
 import numpy as np
+
+import matplotlib
+matplotlib.rcParams.update({'font.size': 14})
 
 dataFileName = sys.argv[1]
 
@@ -54,13 +58,13 @@ print min(lengths), max(lengths), lengths
 width = 0.2
 
 fig, ax = plt.subplots()
-p1 = ax.bar(ind, avg1s, width=width, color='r', yerr=err1s)
+p1 = ax.bar(ind, avg1s, width=width, color='r') #, yerr=err1s)
 #p2 = plt.bar(lengths, avg2s, width=0.35, color='y', bottom=avg1s, yerr=err2s) #, yerr=menStd)
 #p3 = plt.bar(lengths, avg3s, width=0.35, color='g', bottom=avg2s, yerr=err3s) #, yerr=menStd)
 #p4 = plt.bar(lengths, avg4s, width=0.35, color='b', bottom=avg3s, yerr=err4s) #, yerr=menStd)
-p2 = ax.bar(ind + width, avg2s, width=width, color='y', yerr=err2s) #, yerr=menStd)
-p3 = ax.bar(ind + 2*width, avg3s, width=width, color='g', yerr=err3s) #, yerr=menStd)
-p4 = ax.bar(ind + 3*width, avg4s, width=width, color='b', yerr=err4s) #, yerr=menStd)
+p2 = ax.bar(ind + width, avg2s, width=width, color='y') #, yerr=err2s) #, yerr=menStd)
+p3 = ax.bar(ind + 2*width, avg3s, width=width, color='g') #, yerr=err3s) #, yerr=menStd)
+p4 = ax.bar(ind + 3*width, avg4s, width=width, color='b') #, yerr=err4s) #, yerr=menStd)
 
 #font = {'fontname': 'Verdana'}
 # **font
@@ -70,6 +74,7 @@ ax.set_ylabel('Time (us)')
 ax.set_title('')
 ax.set_xticks(ind + 2*width)
 ax.set_xticklabels(lengths)
+# ax.tick_params(axis='x', which='major', pad=15)
 
 #plt.ylabel('Time (s)')
 #plt.xlabel('Number of Name Components')
@@ -79,5 +84,7 @@ ax.set_xticklabels(lengths)
 plt.legend( (p1[0], p2[0], p3[0], p4[0]), ('Step 1', 'Step 2', 'Step 3', 'Step 4') )
 
 # plt.tight_layout()
-plt.show()
-#plt.savefig(figureFileName)
+#plt.show()
+plt.savefig(dataFileName + ".pdf")
+#pdf = PdfPages("out.pdf")
+#pdf.savefig(fig)
