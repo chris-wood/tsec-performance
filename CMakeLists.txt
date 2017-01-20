@@ -10,6 +10,8 @@ link_directories($ENV{CCNX_DEPENDENCIES}/lib)
 include_directories($ENV{CCNX_DEPENDENCIES}/include)
 link_directories($ENV{CCNX_HOME}/lib)
 include_directories($ENV{CCNX_HOME}/include)
+link_directories($ENV{HOME}/lib/lib)
+include_directories($ENV{HOME}/lib/include)
 
 set(OPENSSL_ROOT_DIR $ENV{CCNX_DEPENDENCIES})
 

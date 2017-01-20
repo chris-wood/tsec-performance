@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
 
 #include <parc/algol/parc_Object.h>
 #include <parc/algol/parc_Buffer.h>
@@ -16,21 +15,6 @@
 #include "sha256.c"
 
 #define NUM_TRIALS 100
-
-// call this function to start a nanosecond-resolution timer
-struct timespec timer_start() {
-    struct timespec start_time;
-    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start_time);
-    return start_time;
-}
-
-// call this function to end a timer, returning nanoseconds elapsed as a long
-long timer_end(struct timespec start_time){
-    struct timespec end_time;
-    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end_time);
-    long diffInNanos = end_time.tv_nsec - start_time.tv_nsec;
-    return diffInNanos;
-}
 
 void
 usage(char *prog)
@@ -66,14 +50,10 @@ profile(PARCCryptoHasher *hasher)
 
         // Compute the hash of the input
         uint64_t startTime = parcStopwatch_ElapsedTimeNanos(timer);
-        struct timespec start = timer_start();
         PARCBuffer *output = hashFunction(hasher, input);
-        long elapsed = timer_end(start);
         uint64_t endTime = parcStopwatch_ElapsedTimeNanos(timer);
-        
-        totalTime += (endTime - startTime);
 
-        printf("%lu\n", elapsed);
+        totalTime += (endTime - startTime);
 
         parcBuffer_Release(&output);
         parcBuffer_Release(&input);
@@ -85,7 +65,7 @@ profile(PARCCryptoHasher *hasher)
     return average;
 }
 
-int 
+int
 main(int argc, char **argv)
 {
     int i;
@@ -131,4 +111,3 @@ main(int argc, char **argv)
         exit(-2);
     }
 }
-

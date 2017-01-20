@@ -33,7 +33,7 @@
 
 typedef struct {
     PARCBuffer *outputBuffer;
-    SHA256_CTX *ctx;
+    CTX_SHA256 *ctx;
 } SHA2562Hasher;
 
 static bool
