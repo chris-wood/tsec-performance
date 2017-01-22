@@ -1,4 +1,3 @@
-#include <argon2.h>
 #include <sodium/crypto_pwhash.h>
 
 #include <parc/algol/parc_Buffer.h>

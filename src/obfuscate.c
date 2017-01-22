@@ -15,7 +15,7 @@
 #include "sha256.c"
 //#include "balloon.c"
 
-#define NUM_TRIALS 1000
+#define NUM_TRIALS 100
 
 typedef struct {
     int length;
@@ -121,10 +121,14 @@ main(int argc, char **argv)
 
     argon2_init();
 
+    // printf("%d %d\n", crypto_pwhash_OPSLIMIT_INTERACTIVE, crypto_pwhash_MEMLIMIT_INTERACTIVE);
+
     // extract the parameters
-    char *alg = argv[1];
-    int low = atoi(argv[2]);
-    int high = atoi(argv[3]);
+    int low = atoi(argv[1]);
+    int high = atoi(argv[2]);
+    char *alg = argv[3];
+    argon2TCost = atoi(argv[4]);
+    argon2MCost = atoi(argv[5]);
 
     // Create the statically allocated hashers
     PARCCryptoHasher *sha256Hasher = parcCryptoHasher_CustomHasher(0, functor_sha256);

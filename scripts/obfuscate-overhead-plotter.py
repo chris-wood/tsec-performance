@@ -24,6 +24,7 @@ with open(dataFileName, "r") as f:
         alg = data[0]
         length = int(data[1])
         avgTime = float(data[2])
+        print data
         maxP = float(length) / (avgTime / 1000000000) # must convert the nanoseconds to seconds
         maxP = int(round_sig(maxP, 5))
 
@@ -53,11 +54,12 @@ for alg in algTimes:
 
 ax.set_xlabel('Packet Size [B]')
 ax.set_ylabel('Throughput Capacity [packets/second]')
+ax.set_yscale("log", nonposy='clip')
 ax.set_title('')
 ax.set_xticks(ind + 2*width)
 ax.set_xticklabels(lengths)
 
-plt.legend( (plots[0][0], plots[1][0]), (algTimes.keys()[0], algTimes.keys()[1]) )
+plt.legend( (plots[0][0], plots[1][0], plots[2][0]), (algTimes.keys()[0], algTimes.keys()[1], algTimes.keys()[2]) )
 
-plt.show()
-#plt.savefig(figureFileName)
+# plt.show()
+plt.savefig(dataFileName.replace(".","_") + ".eps")
