@@ -66,7 +66,6 @@ set(single_SOURCES
     )
 
 set(PERF_LIBRARIES
-        argon2
         scrypt
         ssl
         crypto

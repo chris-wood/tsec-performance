@@ -14,12 +14,12 @@
 #include "scrypt.c"
 #include "sha256.c"
 
-#define NUM_TRIALS 100
+#define NUM_TRIALS 10
 
 void
 usage(char *prog)
 {
-    fprintf(stderr, "%s <alg> (params)", prog);
+    fprintf(stderr, "%s <alg> (params)\n", prog);
 }
 
 PARCBuffer *
@@ -43,6 +43,7 @@ profile(PARCCryptoHasher *hasher)
     parcStopwatch_Start(timer);
     uint64_t totalTime = 0;
     for (t = 0; t < NUM_TRIALS; t++) {
+        fprintf(stderr, "Trial %d\n", t);
         // Generate the input buffer to be hashed
         PARCBuffer *input = parcBuffer_Allocate(32);
         parcSecureRandom_NextBytes(random, input);
@@ -90,12 +91,18 @@ main(int argc, char **argv)
         double time = profile(sha256Hasher);
         printf("%f\n", time);
     } else if (strcmp(alg, "ARGON2") == 0) {
-        //argon2TCost = atoi(argv[2]);
-        //argon2MCost = atoi(argv[3]);
-        //argon2DCost = atoi(argv[4]);
+        if (argc < 5) {
+            argon2TCost = crypto_pwhash_OPSLIMIT_INTERACTIVE;
+            argon2MCost = crypto_pwhash_MEMLIMIT_INTERACTIVE;
+            argon2DCost = 1;
+        } else {
+            argon2TCost = atoi(argv[2]);
+            argon2MCost = atoi(argv[3]);
+            argon2DCost = atoi(argv[4]);
+        }
         PARCCryptoHasher *argon2Hasher = parcCryptoHasher_CustomHasher(0, functor_argon2);
-        double time = profile(argon2Hasher);
-        printf("%f\n", time);
+        double averageTime = profile(argon2Hasher);
+        printf("%f\n", averageTime);
     } else if (strcmp(alg, "scrypt") == 0) {
         //scrypt_N = atoi(argv[2]);
         //scrypt_r = atoi(argv[3]);

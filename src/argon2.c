@@ -12,8 +12,8 @@ int argon2DCost;
 void
 argon2_init()
 {
-    argon2TCost = crypto_pwhash_OPSLIMIT_MODERATE;
-    argon2MCost = crypto_pwhash_MEMLIMIT_MODERATE;
+    argon2TCost = crypto_pwhash_OPSLIMIT_INTERACTIVE;
+    argon2MCost = crypto_pwhash_MEMLIMIT_INTERACTIVE;
     argon2DCost = 1;
 }
 
@@ -91,7 +91,7 @@ argon2Hasher_Init(Argon2Hasher *hasher)
     }
 
     hasher->outputBuffer = parcBuffer_Allocate(hasher->hashLength);
-    hasher->saltBuffer = parcBuffer_Allocate(hasher->saltLength);
+    hasher->saltBuffer = parcBuffer_Allocate(crypto_pwhash_SALTBYTES);
     parcSecureRandom_NextBytes(hasher->rng, hasher->saltBuffer);
 
     return 0;
@@ -102,8 +102,8 @@ argon2Hasher_Update(Argon2Hasher *hasher, const void *buffer, size_t length)
 {
     char *salt = parcBuffer_Overlay(hasher->saltBuffer, 0);
     char *hash = parcBuffer_Overlay(hasher->outputBuffer, 0);
-    argon2i_hash_raw(hasher->tCost, hasher->mCost, hasher->parallelism, buffer, length, salt, hasher->saltLength, hash, hasher->hashLength);
-    return length;
+    int result = crypto_pwhash(hash, hasher->hashLength, buffer, length, salt, hasher->tCost, hasher->mCost, hasher->parallelism);
+    return (result == 0 ? length : -1);
 }
 
 PARCBuffer *
