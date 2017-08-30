@@ -39,8 +39,8 @@ ind = np.arange(0, len(lengths))
 width = float(1) / len(algTimes.keys()) - 0.1
 
 ## debug
-print ind, width
-print lengths, algTimes
+# print ind, width
+# print lengths, algTimes
 
 fig, ax = plt.subplots()
 
@@ -59,7 +59,8 @@ ax.set_title('')
 ax.set_xticks(ind + 2*width)
 ax.set_xticklabels(lengths)
 
+plt.grid(linestyle="dotted")
 plt.legend( (plots[0][0], plots[1][0], plots[2][0]), (algTimes.keys()[0], algTimes.keys()[1], algTimes.keys()[2]) )
 
 # plt.show()
-plt.savefig(dataFileName.replace(".","_") + ".eps")
+plt.savefig(dataFileName.replace(".","_") + ".pdf")

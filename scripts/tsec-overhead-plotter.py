@@ -15,7 +15,7 @@ import math
 import numpy as np
 
 import matplotlib
-matplotlib.rcParams.update({'font.size': 14})
+# matplotlib.rcParams.update({'font.size': 14})
 
 dataFileName = sys.argv[1]
 
@@ -54,7 +54,6 @@ with open(dataFileName, "r") as f:
         err4s.append(time4sd)
 
 ind = np.arange(min(lengths), max(lengths) + 1)
-print min(lengths), max(lengths), lengths
 width = 0.2
 
 fig, ax = plt.subplots()
@@ -74,7 +73,9 @@ ax.set_ylabel('Time (us)')
 ax.set_title('')
 ax.set_xticks(ind + 2*width)
 ax.set_xticklabels(lengths)
-# ax.tick_params(axis='x', which='major', pad=15)
+ax.tick_params(axis='x', which='major', pad=15)
+
+plt.grid(linestyle="dotted")
 
 #plt.ylabel('Time (s)')
 #plt.xlabel('Number of Name Components')
@@ -85,6 +86,10 @@ plt.legend( (p1[0], p2[0], p3[0], p4[0]), ('Step 1', 'Step 2', 'Step 3', 'Step 4
 
 # plt.tight_layout()
 #plt.show()
-plt.savefig(dataFileName + ".pdf")
+plt.gcf().subplots_adjust(bottom=0.2)
+fig = matplotlib.pyplot.gcf()
+fig.set_size_inches(8, 4)
+fig.savefig(dataFileName + ".pdf", dpi=100)
+# plt.savefig(dataFileName + ".pdf")
 #pdf = PdfPages("out.pdf")
 #pdf.savefig(fig)
